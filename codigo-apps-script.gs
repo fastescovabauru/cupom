@@ -58,12 +58,16 @@ function enviarEmailCupom_(registro) {
             <div style="font-size:22px;color:#fff;font-style:italic">fast<span style="color:#d4af37;font-style:normal;font-weight:bold">escova</span></div>
             <div style="color:#bbb;font-size:11px;letter-spacing:3px;margin-top:2px">BAURU</div>
             <h1 style="color:#d4af37;font-size:20px;margin:22px 0 4px">Hidratação grátis</h1>
-            <p style="color:#ddd;font-size:14px;margin:0 0 20px">pra você, ${escapeHtml_(registro.nome)}</p>
+            <p style="color:#ddd;font-size:14px;margin:0 0 4px">pra você, ${escapeHtml_(registro.nome)}</p>
+            <p style="color:#999;font-size:12.5px;margin:0 0 20px">ao fechar qualquer serviço na loja</p>
             <div style="background:#000;border:1.5px dashed #d4af37;border-radius:10px;padding:16px;margin-bottom:20px">
               <div style="color:#999;font-size:11px;letter-spacing:1px">CÓDIGO DO CUPOM</div>
               <div style="color:#fff;font-size:26px;font-weight:bold;letter-spacing:2px;margin-top:4px">${escapeHtml_(registro.codigo_cupom)}</div>
             </div>
             <p style="color:#ddd;font-size:14px;margin:0 0 6px"><strong style="color:#d4af37">Válido até:</strong> ${escapeHtml_(registro.data_validade)}</p>
+            <p style="color:#e8c48c;font-size:12.5px;margin:10px 0 0;line-height:1.5;background:rgba(212,175,55,0.08);border-radius:8px;padding:8px 10px">
+              ⚠️ A hidratação é um brinde ao fechar qualquer outro serviço (escova, manicure, tratamento, etc.) — não é resgatável sozinha.
+            </p>
             <p style="color:#999;font-size:12.5px;margin:14px 0 0;line-height:1.5">
               Válido apenas na unidade Fast Escova Bauru<br>
               ${escapeHtml_(UNIDADE_ENDERECO)}<br>
@@ -78,7 +82,7 @@ function enviarEmailCupom_(registro) {
       to: registro.email,
       subject: assunto,
       htmlBody: corpoHtml,
-      body: `Seu cupom de hidratação grátis Fast Escova Bauru: ${registro.codigo_cupom}. Válido até ${registro.data_validade}. Endereço: ${UNIDADE_ENDERECO}.`
+      body: `Seu cupom de hidratação grátis Fast Escova Bauru: ${registro.codigo_cupom}. Válido até ${registro.data_validade}. É um brinde ao fechar qualquer outro serviço (escova, manicure, tratamento, etc.) — não é resgatável sozinho. Endereço: ${UNIDADE_ENDERECO}.`
     });
     return true;
   } catch (err) {

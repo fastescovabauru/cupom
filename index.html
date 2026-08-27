@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Fast Escova Bauru · Cupom de Hidratação Grátis</title>
-<meta name="description" content="Resgate agora seu cupom de Hidratação grátis na primeira visita à Fast Escova Bauru. Liberado na hora, direto no seu email.">
+<meta name="description" content="Faça seu primeiro serviço na Fast Escova Bauru e ganhe uma hidratação grátis de brinde. Cupom liberado na hora, direto no seu email.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎟️</text></svg>">
 
 <!-- ===================================================================
@@ -164,8 +164,8 @@ src="https://www.facebook.com/tr?id=2253088758874211&ev=PageView&noscript=1"/></
   <section class="hero">
     <div class="hero-foto"><img src="hero-hidratacao.jpg" alt="Hidratação capilar na Fast Escova Bauru" loading="eager"></div>
     <span class="selo">🎟️ Exclusivo para sua primeira vez na Fast</span>
-    <h1>Sua <em>primeira vez</em> na Fast Escova Bauru?<br>Ganhe uma <em>hidratação</em></h1>
-    <p>Preencha seus dados e seu cupom de <strong>Hidratação grátis</strong> é liberado na hora — igual um bilhete de ouro, direto na tela e no seu email.</p>
+    <h1>Faça seu primeiro <em>serviço</em> na Fast Escova Bauru e ganhe uma <em>hidratação</em></h1>
+    <p>Vale pra qualquer serviço — escova, manicure, tudo. Preencha seus dados e seu cupom de <strong>Hidratação grátis</strong> é liberado na hora — igual um bilhete de ouro, direto na tela e no seu email.</p>
     <button class="cta-hero" onclick="document.getElementById('form-secao').scrollIntoView({behavior:'smooth',block:'center'})">Resgatar meu cupom agora</button>
     <div class="hero-hint">Leva menos de 1 minuto · sem hora marcada</div>
   </section>
@@ -190,8 +190,8 @@ src="https://www.facebook.com/tr?id=2253088758874211&ev=PageView&noscript=1"/></
       <div class="passo">
         <div class="n">3</div>
         <div>
-          <div class="t">Use em até 4 dias</div>
-          <div class="d">Apareça na unidade Bauru, sem hora marcada, e mostre o cupom no balcão.</div>
+          <div class="t">Feche qualquer serviço em até 4 dias</div>
+          <div class="d">Apareça na unidade Bauru, sem hora marcada, mostre o cupom no balcão e a hidratação entra de brinde no seu atendimento.</div>
         </div>
       </div>
     </div>
@@ -200,7 +200,7 @@ src="https://www.facebook.com/tr?id=2253088758874211&ev=PageView&noscript=1"/></
   <section id="form-secao">
     <div class="form-card" id="formCard">
       <h2>Resgatar cupom</h2>
-      <div class="sub">Hidratação grátis na sua 1ª visita</div>
+      <div class="sub">Hidratação grátis ao fechar seu 1º serviço</div>
       <form id="cupomForm" novalidate>
         <div class="field">
           <label>Nome</label>
@@ -239,7 +239,7 @@ src="https://www.facebook.com/tr?id=2253088758874211&ev=PageView&noscript=1"/></
               <div class="cidade" style="font-size:9px">BAURU</div>
             </div>
             <div class="titulo">Hidratação Grátis</div>
-            <div class="paranome">pra <b id="ticketNome">—</b></div>
+            <div class="paranome">pra <b id="ticketNome">—</b><br>ao fechar qualquer serviço na loja</div>
 
             <div class="codigo-box">
               <div class="lbl">Código do cupom</div>
@@ -261,7 +261,7 @@ src="https://www.facebook.com/tr?id=2253088758874211&ev=PageView&noscript=1"/></
 
           <div class="ticket-rodape">
             <b>Fast Escova Bauru</b> · R. Antônio Alves, 30-12<br>
-            Uso único · Não cumulativo · Válido só nesta unidade
+            Brinde ao fechar qualquer serviço · Uso único · Válido só nesta unidade
           </div>
         </div>
 
@@ -283,7 +283,7 @@ src="https://www.facebook.com/tr?id=2253088758874211&ev=PageView&noscript=1"/></
   </section>
 
   <p class="regras">
-    <b>Regras do cupom:</b> válido apenas para hidratação capilar, na primeira visita, exclusivamente na unidade Fast Escova Bauru (R. Antônio Alves, 30-12). Validade de 4 dias corridos a partir da data do cadastro, mostrada acima. Um cupom por pessoa — não pode ser resgatado novamente pelo mesmo nome, telefone ou email, nem por quem já foi atendido na unidade. Sem hora marcada; sujeito à fila do dia. Não cumulativo com outras promoções.
+    <b>Regras do cupom:</b> a hidratação grátis é um brinde ao fechar qualquer outro serviço (escova, manicure, tratamento, etc.) na primeira visita — <b>não é resgatável sozinha, como serviço avulso</b>. Válido exclusivamente na unidade Fast Escova Bauru (R. Antônio Alves, 30-12). Validade de 4 dias corridos a partir da data do cadastro, mostrada acima. Um cupom por pessoa — não pode ser resgatado novamente pelo mesmo nome, telefone ou email, nem por quem já foi atendido na unidade. Sem hora marcada; sujeito à fila do dia. Não cumulativo com outras promoções.
   </p>
 
   <footer>Fast Escova Bauru · R. Antônio Alves, 30-12 — Bauru, SP</footer>
@@ -534,9 +534,12 @@ async function desenharCupomImagem(cupom){
   ctx.font = '400 18px Inter';
   ctx.fillStyle = '#a8a49b';
   ctx.fillText('pra ' + cupom.nome, W/2, 224);
+  ctx.font = '400 15px Inter';
+  ctx.fillStyle = '#8a8579';
+  ctx.fillText('ao fechar qualquer serviço na loja', W/2, 247);
 
   // caixa código
-  roundRect(W/2-260, 250, 520, 90, 14);
+  roundRect(W/2-260, 270, 520, 90, 14);
   ctx.strokeStyle = 'rgba(212,175,55,0.6)';
   ctx.setLineDash([6,6]);
   ctx.lineWidth = 2;
@@ -545,28 +548,28 @@ async function desenharCupomImagem(cupom){
 
   ctx.font = '700 12px Inter';
   ctx.fillStyle = '#a8a49b';
-  ctx.fillText('CÓDIGO DO CUPOM', W/2, 280);
+  ctx.fillText('CÓDIGO DO CUPOM', W/2, 300);
   ctx.font = '800 36px Inter';
   ctx.fillStyle = '#f7f5f0';
-  ctx.fillText(cupom.codigo_cupom, W/2, 320);
+  ctx.fillText(cupom.codigo_cupom, W/2, 340);
 
   // validade
   ctx.font = '400 15px Inter';
   ctx.fillStyle = '#a8a49b';
   ctx.textAlign = 'left';
-  ctx.fillText('Cadastrado em', W/2-260, 380);
-  ctx.fillText('Válido até', W/2+40, 380);
+  ctx.fillText('Cadastrado em', W/2-260, 400);
+  ctx.fillText('Válido até', W/2+40, 400);
   ctx.font = '700 17px Inter';
   ctx.fillStyle = '#e8cc6a';
-  ctx.fillText(cupom.data_cadastro, W/2-260, 404);
-  ctx.fillText(cupom.data_validade, W/2+40, 404);
+  ctx.fillText(cupom.data_cadastro, W/2-260, 424);
+  ctx.fillText(cupom.data_validade, W/2+40, 424);
 
   // rodapé
   ctx.textAlign = 'center';
   ctx.font = '400 14px Inter';
   ctx.fillStyle = '#6b675f';
-  ctx.fillText('Fast Escova Bauru · R. Antônio Alves, 30-12 — Bauru, SP', W/2, 460);
-  ctx.fillText('Uso único · Não cumulativo · Válido só nesta unidade', W/2, 484);
+  ctx.fillText('Fast Escova Bauru · R. Antônio Alves, 30-12 — Bauru, SP', W/2, 480);
+  ctx.fillText('Brinde ao fechar qualquer serviço · Não cumulativo · Válido só nesta unidade', W/2, 504);
 
   return new Promise(resolve => {
     canvas.toBlob(blob => resolve(URL.createObjectURL(blob)), 'image/png');
