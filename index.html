@@ -7,6 +7,26 @@
 <meta name="description" content="Resgate agora seu cupom de Hidratação grátis na primeira visita à Fast Escova Bauru. Liberado na hora, direto no seu email.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎟️</text></svg>">
 
+<!-- ===================================================================
+     META PIXEL — Fast Escova Bauru · Dataset ID 2253088758874211
+     PageView dispara ao carregar; evento "Lead" dispara em fbqLead()
+     só quando um cupom NOVO é gerado (não em reconsulta de quem já tem).
+==================================================================== -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '2253088758874211');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=2253088758874211&ev=PageView&noscript=1"/></noscript>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500;1,700&family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -343,6 +363,12 @@ form.addEventListener('submit', async (e) => {
     });
     if (error) throw error;
     if (!data.ok) throw new Error(data.erro || 'falha ao resgatar cupom');
+
+    // conversão Meta Ads — só na primeira vez (cupom novo), pra não contar
+    // a mesma pessoa reabrindo a página como um lead novo de novo.
+    if (!data.existente && window.fbq) {
+      try { fbq('track', 'Lead', { content_name: 'cupom_hidratacao_bauru' }); } catch(_){}
+    }
 
     // email só é disparado na primeira vez (cupom novo) — evita reenviar
     // toda vez que a pessoa reabrir a página com os mesmos dados.
