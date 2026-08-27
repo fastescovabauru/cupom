@@ -103,21 +103,35 @@ async function validarSenha(senha: string): Promise<boolean> {
   return !!data && data.senha === senha;
 }
 
-/* ---------- PROCESSAMENTO DE CADA LINHA ---------- */
+/* ---------- PROCESSAMENTO DE CADA LINHA ----------
+   Manda pro Meta TODO cliente com visita/venda (não só quem resgatou
+   o cupom da hidratação) — vocês rodam mais de uma campanha, e a
+   atribuição de qualquer uma delas depende desse sinal de conversão.
+   Quando bate com um cupom nosso, aproveita o fbc/fbp salvo lá pra
+   melhorar a atribuição; quando não bate, manda mesmo assim só com
+   telefone/email (o Meta ainda usa isso pra achar quem se parece com
+   quem comprou). */
 
 async function processarLinha(venda: VendaEntrada, linha: number): Promise<ResultadoLinha> {
   const telefoneNorm = String(venda.telefone || "").replace(/\D/g, "");
   const email = String(venda.email || "").trim().toLowerCase();
-  const valor = parseValorBr(venda.valor);
+  const valor = parseValorBr(venda.valor); // pode ser null — relatório de Clientes não traz valor
   const dataFechamento = parseDataFlexivel(venda.data);
 
   if (telefoneNorm.length < 10 && !email) {
-    return { linha, status: "dados_invalidos", detalhe: "sem telefone nem email pra buscar o lead" };
-  }
-  if (valor === null) {
-    return { linha, status: "dados_invalidos", detalhe: "valor da venda não reconhecido" };
+    return { linha, status: "dados_invalidos", detalhe: "sem telefone nem email pra identificar o cliente" };
   }
 
+  // idempotência genérica (funciona com ou sem cupom): mesma pessoa +
+  // mesma data de evento não gera dois eventos, mesmo subindo a
+  // planilha de novo com gente repetida.
+  const chave = `${telefoneNorm || email}|${dataFechamento || "sem-data"}`;
+  const { data: jaExiste } = await sb.from("eventos_meta").select("enviado").eq("chave_idempotencia", chave).maybeSingle();
+  if (jaExiste?.enviado) {
+    return { linha, status: "ja_processado" };
+  }
+
+  // tenta casar com um cupom nosso (enriquece com fbc/fbp do clique do anúncio)
   let registro: Record<string, any> | null = null;
   if (telefoneNorm.length >= 10) {
     const { data } = await sb.from("cupons").select("*").eq("telefone_norm", telefoneNorm).maybeSingle();
@@ -126,18 +140,6 @@ async function processarLinha(venda: VendaEntrada, linha: number): Promise<Resul
   if (!registro && email) {
     const { data } = await sb.from("cupons").select("*").eq("email_norm", email).maybeSingle();
     if (data) registro = data;
-  }
-
-  if (!registro) {
-    return { linha, status: "sem_lead", detalhe: "telefone/email não bate com nenhum cupom resgatado" };
-  }
-
-  // idempotência: como o Trinks não manda um ID de transação aqui (é
-  // digitado à mão), usa telefone+data+valor como identificador único
-  // — subir a mesma linha duas vezes não gera evento duplicado no Meta.
-  const idVenda = `manual-${telefoneNorm || email}-${dataFechamento || "sem-data"}-${valor}`;
-  if (registro.venda_id_trinks === idVenda && registro.venda_reportada_meta) {
-    return { linha, status: "ja_processado", codigo_cupom: registro.codigo_cupom };
   }
 
   let enviado = false;
@@ -150,17 +152,29 @@ async function processarLinha(venda: VendaEntrada, linha: number): Promise<Resul
     detalheErro = "META_ACCESS_TOKEN não configurado nesta função ainda";
   }
 
-  await sb.from("cupons").update({
-    venda_id_trinks: idVenda,
-    venda_valor: valor,
-    venda_data: dataFechamento,
-    venda_reportada_meta: enviado,
-  }).eq("id", registro.id);
+  await sb.from("eventos_meta").upsert({
+    chave_idempotencia: chave,
+    telefone_norm: telefoneNorm || null,
+    email_norm: email || null,
+    nome: venda.nome || null,
+    data_evento: dataFechamento,
+    valor,
+    enviado,
+  }, { onConflict: "chave_idempotencia" });
+
+  if (registro) {
+    await sb.from("cupons").update({
+      venda_id_trinks: `manual-${chave}`,
+      venda_valor: valor,
+      venda_data: dataFechamento,
+      venda_reportada_meta: enviado,
+    }).eq("id", registro.id);
+  }
 
   if (!enviado) {
-    return { linha, status: "erro_meta", codigo_cupom: registro.codigo_cupom, detalhe: detalheErro };
+    return { linha, status: "erro_meta", codigo_cupom: registro?.codigo_cupom, detalhe: detalheErro };
   }
-  return { linha, status: "enviado", codigo_cupom: registro.codigo_cupom };
+  return { linha, status: "enviado", codigo_cupom: registro?.codigo_cupom, detalhe: registro ? "casou com cupom" : "sem cupom, enviado só com telefone/email" };
 }
 
 /* ---------- PARSING (formato brasileiro: "R$ 80,00", "27/08/2026") ---------- */
@@ -204,8 +218,8 @@ async function sha256Hex_(valor: string): Promise<string> {
 }
 
 async function enviarPurchaseParaMeta(
-  registro: Record<string, any>,
-  valor: number,
+  registro: Record<string, any> | null,
+  valor: number | null,
   dataFechamento: string | null,
   telefone: string,
   email: string,
@@ -216,12 +230,21 @@ async function enviarPurchaseParaMeta(
     const comDdi = telefone.length <= 11 ? "55" + telefone : telefone;
     userData.ph = [await sha256Hex_(comDdi)];
   }
-  if (registro.fbc) userData.fbc = registro.fbc;
-  if (registro.fbp) userData.fbp = registro.fbp;
+  if (registro?.fbc) userData.fbc = registro.fbc;
+  if (registro?.fbp) userData.fbp = registro.fbp;
 
   const eventTime = dataFechamento
     ? Math.floor(new Date(dataFechamento.replace(" ", "T") + "-03:00").getTime() / 1000)
     : Math.floor(Date.now() / 1000);
+
+  // custom_data só entra com value/currency quando a planilha trazia
+  // valor de verdade (o relatório de Clientes da Trinks não traz) —
+  // nunca inventa número pra não distorcer ROAS no Meta.
+  const customData: Record<string, unknown> = { content_name: "venda_fechada_trinks_manual" };
+  if (valor !== null) {
+    customData.value = valor;
+    customData.currency = "BRL";
+  }
 
   const payload = {
     data: [{
@@ -230,11 +253,7 @@ async function enviarPurchaseParaMeta(
       action_source: "system_generated",
       event_source_url: EVENT_SOURCE_URL,
       user_data: userData,
-      custom_data: {
-        value: valor,
-        currency: "BRL",
-        content_name: "venda_fechada_trinks_manual",
-      },
+      custom_data: customData,
     }],
   };
 
