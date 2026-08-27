@@ -38,7 +38,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const META_ACCESS_TOKEN = Deno.env.get("META_ACCESS_TOKEN");
 const META_PIXEL_ID = "2253088758874211";
 const META_API_VERSION = "v20.0";
-const EVENT_SOURCE_URL = "https://fastescovabauru.github.io/fastescova-cupom-bauru/";
+const EVENT_SOURCE_URL = "https://fastescovabauru.github.io/cupom/";
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
