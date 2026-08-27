@@ -35,10 +35,10 @@ Arquivos desta pasta:
 ### 4. Link do grupo
 Em `index.html`, troque `WHATSAPP_GRUPO_URL` pelo link real do grupo/comunidade da Fast Escova Bauru assim que tiver.
 
-### 5. Publicar
-Repositório: (mover pra conta própria da Fast Escova no GitHub — ver pendência abaixo).
-- **Página do cupom (pública):** `https://{usuario}.github.io/fastescova-cupom-bauru/`
-- **Painel de validação (uso interno da loja):** `https://{usuario}.github.io/fastescova-cupom-bauru/admin.html`
+### 5. Publicar — ✅ feito em 27/08/2026
+Repositório: [github.com/fastescovabauru/fastescova-cupom-bauru](https://github.com/fastescovabauru/fastescova-cupom-bauru) (transferido da conta Pousada Aimê, já aceito).
+- **Página do cupom (pública):** https://fastescovabauru.github.io/fastescova-cupom-bauru/
+- **Painel de validação (uso interno da loja):** https://fastescovabauru.github.io/fastescova-cupom-bauru/admin.html
 
 ### 6. Testar antes de divulgar
 1. Preencha o formulário publicado com um dado de teste (seu próprio nome/telefone/email).
@@ -84,7 +84,7 @@ Feche uma conta de teste no Trinks pra um cliente com telefone/email que bata co
 
 ## Pendências (ver também `../../acessos.md`)
 
-- [ ] **Aceitar a transferência do GitHub** — logar como `fastescovabauru` e aceitar a transferência do repo (já iniciada).
+- [x] ~~Aceitar a transferência do GitHub~~ — feito em 27/08/2026, repo agora é `fastescovabauru/fastescova-cupom-bauru`.
 - [ ] **Deploy do Apps Script de email** — sem isso o cupom aparece na tela mas não sai por email ainda.
 - [ ] **Trocar a senha padrão do admin** no Supabase (`config_admin`, ver `../../acessos.md`).
 - [ ] **Link do grupo VIP** (WhatsApp) — campo ainda veio em branco.
