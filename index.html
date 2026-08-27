@@ -267,13 +267,24 @@
   <footer>Fast Escova Bauru · R. Antônio Alves, 30-12 — Bauru, SP</footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ==================================================================
-   CONFIGURAÇÃO — cole aqui a URL do Apps Script (ver codigo-apps-script.gs)
-   e o link do grupo (WhatsApp/etc) da Fast Escova Bauru.
+   CONFIGURAÇÃO — cole aqui os dados do Supabase (Settings → API, ver
+   supabase-schema.sql), a URL do Apps Script (só envia o email — ver
+   codigo-apps-script.gs) e o link do grupo da Fast Escova Bauru.
 ================================================================== */
-const SHEETS_URL = "COLE_AQUI_A_URL_DO_APPS_SCRIPT_/exec";
+const SUPABASE_URL = "COLE_AQUI_A_PROJECT_URL_DO_SUPABASE";
+const SUPABASE_ANON_KEY = "COLE_AQUI_A_ANON_PUBLIC_KEY_DO_SUPABASE";
+const EMAIL_URL = "COLE_AQUI_A_URL_DO_APPS_SCRIPT_/exec";
 const WHATSAPP_GRUPO_URL = "https://chat.whatsapp.com/COLE_O_LINK_DO_GRUPO_AQUI";
+
+const configPendente = () => !SUPABASE_URL || SUPABASE_URL.indexOf('COLE_AQUI') > -1
+  || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.indexOf('COLE_AQUI') > -1;
+
+const sb = window.supabase && !configPendente()
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 const $ = id => document.getElementById(id);
 const form = $('cupomForm');
@@ -298,8 +309,8 @@ function parseDataBr(str){
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!SHEETS_URL || SHEETS_URL.indexOf('COLE_AQUI') > -1) {
-    alert('Configuração pendente: cole a URL do Apps Script na constante SHEETS_URL do index.html.');
+  if (!sb) {
+    alert('Configuração pendente: cole SUPABASE_URL e SUPABASE_ANON_KEY no topo do <script> do index.html (ver supabase-schema.sql).');
     return;
   }
 
@@ -327,16 +338,21 @@ form.addEventListener('submit', async (e) => {
   $('sending').classList.add('show');
 
   try {
-    await fetch(SHEETS_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: {'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'resgatar_cupom', nome, telefone: telefoneEl.value, email })
+    const { data, error } = await sb.rpc('resgatar_cupom', {
+      p_nome: nome, p_telefone: telefoneEl.value, p_email: email
     });
+    if (error) throw error;
+    if (!data.ok) throw new Error(data.erro || 'falha ao resgatar cupom');
 
-    const resp = await fetch(SHEETS_URL + '?action=consultar&telefone=' + encodeURIComponent(telefoneDigits) + '&email=' + encodeURIComponent(email) + '&t=' + Date.now());
-    const data = await resp.json();
-
-    if (!data.ok) throw new Error(data.erro || 'falha ao consultar cupom');
+    // email só é disparado na primeira vez (cupom novo) — evita reenviar
+    // toda vez que a pessoa reabrir a página com os mesmos dados.
+    if (!data.existente && EMAIL_URL && EMAIL_URL.indexOf('COLE_AQUI') === -1) {
+      fetch(EMAIL_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: {'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action: 'enviar_email_cupom', ...data.cupom, email })
+      }).then(() => sb.rpc('marcar_email_enviado', { p_codigo: data.cupom.codigo_cupom })).catch(() => {});
+    }
 
     mostrarTicket(data.cupom, data.existente);
   } catch (err) {

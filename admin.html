@@ -44,9 +44,17 @@
   <div class="resultado" id="resultado"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* Cole aqui a mesma URL do Apps Script usada em index.html */
-const SHEETS_URL = "COLE_AQUI_A_URL_DO_APPS_SCRIPT_/exec";
+/* Cole aqui os mesmos dados do Supabase usados em index.html (Settings → API) */
+const SUPABASE_URL = "COLE_AQUI_A_PROJECT_URL_DO_SUPABASE";
+const SUPABASE_ANON_KEY = "COLE_AQUI_A_ANON_PUBLIC_KEY_DO_SUPABASE";
+
+const configPendente = () => !SUPABASE_URL || SUPABASE_URL.indexOf('COLE_AQUI') > -1
+  || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.indexOf('COLE_AQUI') > -1;
+const sb = window.supabase && !configPendente()
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 const $ = id => document.getElementById(id);
 let cupomAtual = null;
@@ -59,8 +67,8 @@ async function consultar(){
   const codigo = $('codigo').value.trim().toUpperCase();
   if (!senha || !codigo) return;
 
-  if (!SHEETS_URL || SHEETS_URL.indexOf('COLE_AQUI') > -1) {
-    alert('Configuração pendente: cole a URL do Apps Script na constante SHEETS_URL do admin.html.');
+  if (!sb) {
+    alert('Configuração pendente: cole SUPABASE_URL e SUPABASE_ANON_KEY no topo do <script> do admin.html.');
     return;
   }
 
@@ -68,11 +76,11 @@ async function consultar(){
   btn.disabled = true; btn.textContent = 'Consultando…';
 
   try {
-    const r = await fetch(SHEETS_URL + '?action=listar_admin&senha=' + encodeURIComponent(senha) + '&t=' + Date.now());
-    const data = await r.json();
-    if (data.erro) { mostrarErro(data.erro); return; }
+    const { data, error } = await sb.rpc('listar_admin', { p_senha: senha });
+    if (error) throw error;
+    if (data && data.erro) { mostrarErro(data.erro); return; }
 
-    const registro = (data.registros || []).find(x => String(x.codigo_cupom).toUpperCase() === codigo);
+    const registro = (data || []).find(x => String(x.codigo_cupom).toUpperCase() === codigo);
     if (!registro) { mostrarErro('Cupom não encontrado.'); return; }
 
     cupomAtual = registro;
@@ -92,7 +100,7 @@ function mostrarErro(msg){
 
 function mostrarResultado(registro, senha){
   const el = $('resultado');
-  const compareceu = String(registro.compareceu || '').toLowerCase() === 'sim';
+  const compareceu = registro.compareceu === true;
 
   let classe = 'r-valido';
   let statusTxt = '✅ Válido — pode usar';
@@ -120,11 +128,9 @@ function mostrarResultado(registro, senha){
 
 async function marcarUsado(codigo, senha){
   try {
-    await fetch(SHEETS_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: {'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'marcar_compareceu', codigo_cupom: codigo, senha })
-    });
+    const { data, error } = await sb.rpc('marcar_compareceu', { p_codigo: codigo, p_senha: senha });
+    if (error) throw error;
+    if (data && data.erro) { mostrarErro(data.erro); return; }
     consultar();
   } catch (err) {
     mostrarErro('Falha ao marcar como usado. Tenta de novo.');
