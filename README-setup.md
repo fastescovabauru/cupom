@@ -4,7 +4,8 @@ Arquivos desta pasta:
 - **`supabase-schema.sql`** — banco de dados: tabela de cupons, checagem de duplicidade, cálculo de validade (+4 dias), geração do código, e dar baixa quando a cliente usa na loja. Roda no Supabase (grátis).
 - **`supabase-migration-02-atribuicao-meta.sql`** — adiciona as colunas de rastreio de anúncio (fbclid/fbc/fbp) e de venda (venda_valor, venda_reportada_meta etc.) numa base que já rodou o `supabase-schema.sql` antes. Rode só uma vez, depois do schema principal.
 - **`codigo-apps-script.gs`** — só manda o email do cupom (Google Apps Script, grátis). Não guarda mais nenhum dado — quem guarda é o Supabase.
-- **`trinks-webhook.ts`** — Edge Function do Supabase: recebe o evento "Fechamento de Conta" da Trinks (venda fechada) e reporta pro Meta Conversions API, atribuída ao clique de anúncio que originou o lead. Ver seção "Atribuição Trinks → Meta Ads" abaixo.
+- **`trinks-webhook.ts`** — Edge Function do Supabase: recebe o evento "Fechamento de Conta" da Trinks (venda fechada) e reporta pro Meta Conversions API, atribuída ao clique de anúncio que originou o lead. Ver seção "Atribuição Trinks → Meta Ads" abaixo. **Só entra em uso quando a API paga da Trinks for contratada** (R$84/mês, faixa 11-15 profissionais).
+- **`importar-vendas-manual.ts`** + **`importar-vendas.html`** — versão gratuita/manual do passo acima, pra usar **enquanto a API paga não é contratada** (combinado: 30 dias de teste manual, 2x por semana). Ver seção "Importação manual de vendas" abaixo.
 - **`index.html`** — página pública (formulário → bilhete dourado na hora → download + grupo). Também captura o fbclid/fbc/fbp do clique do anúncio no momento do cadastro.
 - **`admin.html`** — painel interno pra equipe da loja validar/dar baixa no cupom (evita uso 2x presencial).
 
@@ -56,7 +57,31 @@ Repositório: [github.com/fastescovabauru/cupom](https://github.com/fastescovaba
 - **Já foi até a loja**: isso não dá pra checar automaticamente (o sistema não sabe quem passou na porta). Por isso existe o `admin.html` — a atendente confere o código no balcão e marca **"Marcar como usado agora"**. A partir daí, mesmo dentro do prazo de 4 dias, o cupom aparece como "já utilizado" pra qualquer nova tentativa de acesso.
 - **Validade automática**: calculada no momento do cadastro (`data_cadastro + 4 dias`), gravada no banco, e reexibida sempre que a pessoa reabrir a página — não depende do relógio do celular de ninguém.
 
-## Atribuição Trinks → Meta Ads (venda fechada na loja → campanha certa)
+## Importação manual de vendas (período de 30 dias, sem a API paga)
+
+Combinado em 27/08/2026: por 30 dias a Luana sobe manualmente 2x por semana o relatório de vendas exportado da Trinks, em vez de pagar a API agora. No mês seguinte, contrata a API (ver seção abaixo) e troca pra tempo real.
+
+### Passo a passo pra ativar
+
+1. **Publicar a Edge Function**: Supabase → **Edge Functions → Deploy a new function** → nome `importar-vendas-manual` → colar `importar-vendas-manual.ts` inteiro → Deploy.
+2. **Gerar o token do Meta com permissão `ads_management`** (mesmo passo da seção de baixo) e colar em Edge Functions → `importar-vendas-manual` → **Secrets**, chave `META_ACCESS_TOKEN`. Sem isso, a ferramenta casa os leads e salva o valor da venda, mas não consegue mandar pro Meta ainda.
+3. Copiar a URL da função e colar em `importar-vendas.html`, na constante `IMPORTAR_VENDAS_URL`.
+4. Publicar (`git add` + commit + push, ou pedir pra mim).
+
+### Como usar (2x por semana)
+
+1. Na Trinks, exportar o relatório de vendas/fechamentos do período (Financeiro → Relatórios, ou tela equivalente — a Luana confirma o caminho exato de exportação do plano dela).
+2. Abrir **`https://fastescovabauru.github.io/cupom/importar-vendas.html`**.
+3. Colar a senha do painel (mesma do `admin.html`).
+4. Colar as linhas exportadas (ou enviar o arquivo) e clicar **Ler planilha**.
+5. Conferir se as colunas casaram certo (Nome/Telefone/Email/Valor/Data) — a ferramenta tenta adivinhar sozinha, mas vale olhar antes de processar.
+6. Clicar **Processar e enviar pro Meta** e conferir o resumo: quantas venderam bateram com cupom, quantas já tinham sido processadas antes (não duplica), quantas não bateram com nenhum lead.
+
+A ferramenta é segura de rodar mais de uma vez com a mesma planilha — linhas já processadas (mesmo telefone + data + valor) não geram evento duplicado no Meta.
+
+## Atribuição Trinks → Meta Ads (venda fechada na loja → campanha certa, tempo real)
+
+Quando a API paga for contratada (R$84/mês, faixa 11-15 profissionais — ver conversa com a Trinks), trocamos a importação manual acima pelo webhook automático abaixo.
 
 A Trinks não integra direto com o Pixel, mas tem uma API/Webhooks oficial ("Conecta Trinks", doc em https://trinks.readme.io/) — usamos o evento de webhook **"Fechamento de Conta"**, que já vem com nome/telefone/email/valor da venda no próprio payload, sem precisar de outra chamada.
 
