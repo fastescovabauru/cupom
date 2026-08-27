@@ -2,8 +2,10 @@
 
 Arquivos desta pasta:
 - **`supabase-schema.sql`** — banco de dados: tabela de cupons, checagem de duplicidade, cálculo de validade (+4 dias), geração do código, e dar baixa quando a cliente usa na loja. Roda no Supabase (grátis).
+- **`supabase-migration-02-atribuicao-meta.sql`** — adiciona as colunas de rastreio de anúncio (fbclid/fbc/fbp) e de venda (venda_valor, venda_reportada_meta etc.) numa base que já rodou o `supabase-schema.sql` antes. Rode só uma vez, depois do schema principal.
 - **`codigo-apps-script.gs`** — só manda o email do cupom (Google Apps Script, grátis). Não guarda mais nenhum dado — quem guarda é o Supabase.
-- **`index.html`** — página pública (formulário → bilhete dourado na hora → download + grupo).
+- **`trinks-webhook.ts`** — Edge Function do Supabase: recebe o evento "Fechamento de Conta" da Trinks (venda fechada) e reporta pro Meta Conversions API, atribuída ao clique de anúncio que originou o lead. Ver seção "Atribuição Trinks → Meta Ads" abaixo.
+- **`index.html`** — página pública (formulário → bilhete dourado na hora → download + grupo). Também captura o fbclid/fbc/fbp do clique do anúncio no momento do cadastro.
 - **`admin.html`** — painel interno pra equipe da loja validar/dar baixa no cupom (evita uso 2x presencial).
 
 ---
@@ -54,12 +56,39 @@ Repositório: (mover pra conta própria da Fast Escova no GitHub — ver pendên
 - **Já foi até a loja**: isso não dá pra checar automaticamente (o sistema não sabe quem passou na porta). Por isso existe o `admin.html` — a atendente confere o código no balcão e marca **"Marcar como usado agora"**. A partir daí, mesmo dentro do prazo de 4 dias, o cupom aparece como "já utilizado" pra qualquer nova tentativa de acesso.
 - **Validade automática**: calculada no momento do cadastro (`data_cadastro + 4 dias`), gravada no banco, e reexibida sempre que a pessoa reabrir a página — não depende do relógio do celular de ninguém.
 
+## Atribuição Trinks → Meta Ads (venda fechada na loja → campanha certa)
+
+A Trinks não integra direto com o Pixel, mas tem uma API/Webhooks oficial ("Conecta Trinks", doc em https://trinks.readme.io/) — usamos o evento de webhook **"Fechamento de Conta"**, que já vem com nome/telefone/email/valor da venda no próprio payload, sem precisar de outra chamada.
+
+Fluxo completo:
+1. Lead clica num anúncio → cai na página do cupom → `index.html` guarda `fbclid`/`fbc`/`fbp` junto com o cadastro (isso só existe nesse momento — por isso já está ativo mesmo antes do resto estar pronto).
+2. Cliente vai até a loja, fecha qualquer serviço, a conta é fechada no Trinks.
+3. Trinks dispara o webhook de Fechamento de Conta → `trinks-webhook.ts` (Edge Function no Supabase) recebe.
+4. A função bate telefone/email do evento contra a tabela `cupons`, acha o lead, e manda um evento **Purchase** pro Meta Conversions API com o valor real da venda + o `fbc`/`fbp` salvos no passo 1 — é isso que faz o Meta atribuir a venda de volta à campanha/anúncio certo.
+
+### Passo a passo pra ativar
+
+1. **Pedir acesso à API da Trinks** (só quem tem login na conta Trinks consegue — eu não entro com a senha de vocês): dentro do Trinks, **Fale Conosco** → pedir liberação da API/Webhooks, informando nome e email do responsável técnico. Em até 48h o token aparece em **Minha Área → Meu Cadastro**.
+2. **Rodar `supabase-migration-02-atribuicao-meta.sql`** no SQL Editor do Supabase (cria as colunas que a função abaixo usa).
+3. **Publicar a Edge Function**: Supabase → **Edge Functions → Deploy a new function** → nome `trinks-webhook` → colar `trinks-webhook.ts` inteiro → Deploy. Copiar a URL gerada.
+4. **Gerar um token do Meta com permissão `ads_management`** pro pixel `2253088758874211` (Configurações do Negócio → Usuários do sistema → Gerar novo token — o token enviado em 27/08 é só leitura, não serve pra isso). Colar em Edge Functions → `trinks-webhook` → **Secrets**, chave `META_ACCESS_TOKEN`.
+5. **Cadastrar a URL da Edge Function na Trinks** como destino do webhook de "Fechamento de Conta" (isso é configurado pela própria Trinks/equipe técnica dela, usando o token do passo 1).
+6. No primeiro cadastro, chega uma mensagem de confirmação de assinatura (SNS) — a função já confirma sozinha, não precisa fazer nada manual.
+
+### Testar
+
+Feche uma conta de teste no Trinks pra um cliente com telefone/email que bata com um cupom de teste já resgatado na página. Depois confira:
+- Supabase → Table Editor → `cupons`: a linha deve ter `venda_reportada_meta = true` e `venda_valor` preenchido.
+- Meta Gerenciador de Eventos → aba "Servidor" do pixel `2253088758874211`: deve aparecer um evento `Purchase` recente.
+- Se `venda_reportada_meta` ficar `false`: veja os Logs da Edge Function no Supabase — provavelmente `META_ACCESS_TOKEN` não está configurado ou está com escopo errado.
+
 ## Pendências (ver também `../../acessos.md`)
 
-- [ ] **Mover o repositório**: hoje está em `github.com/pousadaaime/fastescova-cupom-bauru` (temporário). Falta o **usuário/link da conta GitHub própria da Fast Escova** pra eu transferir o repo pra lá e ativar o Pages nessa conta — só depois disso apago o da Pousada Aimê.
-- [ ] **Rodar o schema no Supabase** e me passar `SUPABASE_URL` + `anon key` (passo 1-2 acima) — ou me dar acesso ao projeto que eu mesma rodo.
-- [ ] **Link do grupo VIP** (WhatsApp) — campo veio em branco na última mensagem.
-- [ ] **Pixel do Facebook + API de Conversões** — aguardando o cliente enviar. Quando chegar, adiciono na página (mesmo padrão usado nas outras LPs do vault).
+- [ ] **Aceitar a transferência do GitHub** — logar como `fastescovabauru` e aceitar a transferência do repo (já iniciada).
+- [ ] **Deploy do Apps Script de email** — sem isso o cupom aparece na tela mas não sai por email ainda.
+- [ ] **Trocar a senha padrão do admin** no Supabase (`config_admin`, ver `../../acessos.md`).
+- [ ] **Link do grupo VIP** (WhatsApp) — campo ainda veio em branco.
+- [ ] **Atribuição Trinks → Meta** (seção acima): pedir acesso à API da Trinks, rodar a migration 02, publicar a Edge Function, gerar token `ads_management` do Meta.
 - [ ] **Google Ads** — acesso ainda não liberado (avisar quando tiver, caso vá rodar tráfego pago pra essa página).
 
 ## O que ficou de propósito fora do escopo
