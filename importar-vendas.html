@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast Escova Bauru · Importar vendas (Trinks → Meta)</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#f7f5f0;min-height:100vh;padding:24px 16px 60px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:20px;margin-bottom:4px}
+  .sub{color:#a8a49b;font-size:13.5px;margin-bottom:24px;line-height:1.5}
+  .card{background:#151515;border:1px solid rgba(212,175,55,0.25);border-radius:16px;padding:20px;margin-bottom:18px}
+  .card h2{font-size:15px;color:#e8cc6a;margin-bottom:12px}
+  label{display:block;font-size:11px;font-weight:700;color:#e8cc6a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;margin-top:14px}
+  label:first-child{margin-top:0}
+  input[type=password],textarea{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);background:#1e1e1e;color:#f7f5f0;font-size:14px;font-family:inherit}
+  textarea{min-height:140px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;resize:vertical}
+  input[type=password]:focus,textarea:focus{outline:none;border-color:#d4af37}
+  input[type=file]{margin-top:4px;font-size:13px;color:#a8a49b}
+  .hint{font-size:12px;color:#6b675f;margin-top:6px;line-height:1.5}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;padding:12px 18px;font-weight:700;font-size:14px}
+  .btn-principal{background:linear-gradient(180deg,#e8cc6a,#d4af37);color:#161200}
+  .btn-secundario{background:#1e1e1e;border:1.5px solid rgba(212,175,55,0.4);color:#f7f5f0}
+  button:disabled{opacity:0.5;cursor:default}
+
+  .mapeamento{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:600px){.mapeamento{grid-template-columns:1fr}}
+  select{width:100%;padding:10px 12px;border-radius:9px;border:1.5px solid rgba(255,255,255,0.12);background:#1e1e1e;color:#f7f5f0;font-size:13.5px}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.07)}
+  th{color:#a8a49b;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.04em}
+  .tabela-scroll{overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08)}
+
+  .status-pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+  .s-enviado{background:rgba(60,180,100,0.15);color:#a8e8bc}
+  .s-ja_processado{background:rgba(150,150,150,0.15);color:#ccc}
+  .s-sem_lead{background:rgba(200,160,60,0.15);color:#e8cc6a}
+  .s-dados_invalidos,.s-erro_meta{background:rgba(180,80,60,0.15);color:#e8a48c}
+
+  .resumo{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .resumo .chip{background:#1e1e1e;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;font-size:12.5px}
+  .msg{padding:12px 14px;border-radius:10px;font-size:13px;margin-top:12px;display:none}
+  .msg.show{display:block}
+  .msg-erro{background:rgba(180,80,60,0.12);border:1px solid rgba(180,80,60,0.4);color:#e8a48c}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Importar vendas · Trinks → Meta Ads</h1>
+  <p class="sub">Cole ou envie o relatório de vendas/fechamentos exportado da Trinks. A gente casa cada linha com os cupons resgatados e manda pro Meta como venda atribuída ao anúncio — sem precisar da API paga por enquanto.</p>
+
+  <div class="card">
+    <h2>1. Senha</h2>
+    <label>Senha do painel (a mesma do admin.html)</label>
+    <input type="password" id="senha" placeholder="Senha do painel" autocomplete="off">
+  </div>
+
+  <div class="card">
+    <h2>2. Planilha</h2>
+    <label>Cole aqui (Ctrl+V direto do Excel/Google Sheets, ou o texto do CSV)</label>
+    <textarea id="colar" placeholder="Cole as linhas exportadas da Trinks aqui..."></textarea>
+    <div class="hint">Ou envie o arquivo direto:</div>
+    <input type="file" id="arquivo" accept=".csv,.txt,.tsv">
+    <div class="row" style="margin-top:14px">
+      <button class="btn-secundario" id="btnLer">Ler planilha</button>
+    </div>
+  </div>
+
+  <div class="card" id="cardMapeamento" style="display:none">
+    <h2>3. Confere se casou certo</h2>
+    <div class="mapeamento" id="mapeamento"></div>
+    <div class="hint">Se algum campo veio errado, corrige no seletor acima antes de processar.</div>
+  </div>
+
+  <div class="card" id="cardPreview" style="display:none">
+    <h2>4. Pré-visualização (<span id="totalLinhas">0</span> linhas)</h2>
+    <div class="tabela-scroll">
+      <table id="tabelaPreview"></table>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn-principal" id="btnProcessar">Processar e enviar pro Meta</button>
+    </div>
+    <div class="msg msg-erro" id="msgErro"></div>
+  </div>
+
+  <div class="card" id="cardResultado" style="display:none">
+    <h2>Resultado</h2>
+    <div class="resumo" id="resumo"></div>
+    <div class="tabela-scroll">
+      <table id="tabelaResultado"></table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Cole aqui a URL da Edge Function importar-vendas-manual (ver arquivo .ts) */
+const IMPORTAR_VENDAS_URL = "COLE_AQUI_A_URL_DA_EDGE_FUNCTION_importar-vendas-manual";
+
+const $ = id => document.getElementById(id);
+
+const CAMPOS = [
+  { chave: 'nome', label: 'Nome', pistas: ['nome', 'cliente'] },
+  { chave: 'telefone', label: 'Telefone', pistas: ['telefone', 'celular', 'whatsapp', 'fone'] },
+  { chave: 'email', label: 'Email', pistas: ['email', 'e-mail'] },
+  { chave: 'valor', label: 'Valor da venda', pistas: ['valor', 'total', 'compra'] },
+  { chave: 'data', label: 'Data do fechamento', pistas: ['data', 'fechamento', 'vencimento'] },
+];
+
+let headers = [];
+let linhas = [];
+
+$('arquivo').addEventListener('change', () => {
+  const f = $('arquivo').files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { $('colar').value = reader.result; };
+  reader.readAsText(f, 'utf-8');
+});
+
+$('btnLer').addEventListener('click', lerPlanilha);
+
+function detectarDelimitador(texto){
+  const primeiraLinha = texto.split(/\r?\n/)[0] || '';
+  const candidatos = ['\t', ';', ','];
+  let melhor = ','; let maiorCount = 0;
+  for (const c of candidatos) {
+    const count = primeiraLinha.split(c).length;
+    if (count > maiorCount) { maiorCount = count; melhor = c; }
+  }
+  return melhor;
+}
+
+function parseLinhaCsv(linha, delim){
+  // parser simples que respeita aspas (suficiente pra export de planilha comum)
+  const out = [];
+  let atual = '';
+  let dentroAspas = false;
+  for (let i = 0; i < linha.length; i++) {
+    const c = linha[i];
+    if (c === '"') { dentroAspas = !dentroAspas; continue; }
+    if (c === delim && !dentroAspas) { out.push(atual); atual = ''; continue; }
+    atual += c;
+  }
+  out.push(atual);
+  return out.map(v => v.trim());
+}
+
+function lerPlanilha(){
+  const texto = $('colar').value.trim();
+  if (!texto) { alert('Cola ou envia a planilha primeiro.'); return; }
+
+  const delim = detectarDelimitador(texto);
+  const linhasTexto = texto.split(/\r?\n/).filter(l => l.trim() !== '');
+  if (linhasTexto.length < 2) { alert('Não achei linhas de dados (só o cabeçalho?).'); return; }
+
+  headers = parseLinhaCsv(linhasTexto[0], delim);
+  linhas = linhasTexto.slice(1).map(l => parseLinhaCsv(l, delim));
+
+  montarMapeamento();
+  montarPreview();
+  $('cardMapeamento').style.display = 'block';
+  $('cardPreview').style.display = 'block';
+  $('cardResultado').style.display = 'none';
+}
+
+function normalizarTexto(s){
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function melhorPalpite(pistas){
+  for (let i = 0; i < headers.length; i++) {
+    const h = normalizarTexto(headers[i]);
+    if (pistas.some(p => h.includes(p))) return i;
+  }
+  return -1;
+}
+
+function montarMapeamento(){
+  const container = $('mapeamento');
+  container.innerHTML = '';
+  CAMPOS.forEach(campo => {
+    const div = document.createElement('div');
+    const palpite = melhorPalpite(campo.pistas);
+    const options = headers.map((h, i) => `<option value="${i}" ${i === palpite ? 'selected' : ''}>${h || '(coluna ' + (i+1) + ')'}</option>`).join('');
+    div.innerHTML = `<label style="margin-top:0">${campo.label}</label><select data-campo="${campo.chave}"><option value="-1">— não usar —</option>${options}</select>`;
+    container.appendChild(div);
+  });
+  container.querySelectorAll('select').forEach(sel => sel.addEventListener('change', montarPreview));
+}
+
+function pegarMapeamentoAtual(){
+  const mapa = {};
+  document.querySelectorAll('#mapeamento select').forEach(sel => {
+    mapa[sel.dataset.campo] = parseInt(sel.value, 10);
+  });
+  return mapa;
+}
+
+function montarVendas(){
+  const mapa = pegarMapeamentoAtual();
+  return linhas.map(linha => ({
+    nome: mapa.nome > -1 ? linha[mapa.nome] : '',
+    telefone: mapa.telefone > -1 ? linha[mapa.telefone] : '',
+    email: mapa.email > -1 ? linha[mapa.email] : '',
+    valor: mapa.valor > -1 ? linha[mapa.valor] : '',
+    data: mapa.data > -1 ? linha[mapa.data] : '',
+  }));
+}
+
+function montarPreview(){
+  const vendas = montarVendas();
+  $('totalLinhas').textContent = vendas.length;
+  const tabela = $('tabelaPreview');
+  const cabecalho = '<tr><th>Nome</th><th>Telefone</th><th>Email</th><th>Valor</th><th>Data</th></tr>';
+  const linhasHtml = vendas.slice(0, 20).map(v =>
+    `<tr><td>${escapeHtml(v.nome)}</td><td>${escapeHtml(v.telefone)}</td><td>${escapeHtml(v.email)}</td><td>${escapeHtml(v.valor)}</td><td>${escapeHtml(v.data)}</td></tr>`
+  ).join('');
+  const aviso = vendas.length > 20 ? `<tr><td colspan="5" style="color:#6b675f">… e mais ${vendas.length - 20} linha(s)</td></tr>` : '';
+  tabela.innerHTML = cabecalho + linhasHtml + aviso;
+}
+
+function escapeHtml(v){
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+$('btnProcessar').addEventListener('click', processar);
+
+async function processar(){
+  const senha = $('senha').value.trim();
+  if (!senha) { alert('Preenche a senha primeiro.'); return; }
+  if (!IMPORTAR_VENDAS_URL || IMPORTAR_VENDAS_URL.indexOf('COLE_AQUI') > -1) {
+    alert('Configuração pendente: cole a URL da Edge Function na constante IMPORTAR_VENDAS_URL deste arquivo.');
+    return;
+  }
+
+  const vendas = montarVendas().filter(v => v.telefone || v.email);
+  if (vendas.length === 0) { alert('Nenhuma linha com telefone ou email pra processar.'); return; }
+
+  $('msgErro').classList.remove('show');
+  const btn = $('btnProcessar');
+  btn.disabled = true; btn.textContent = 'Processando…';
+
+  try {
+    const resp = await fetch(IMPORTAR_VENDAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senha, vendas })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.erro || 'falha ao processar');
+    mostrarResultado(data.resultados);
+  } catch (err) {
+    $('msgErro').textContent = 'Erro: ' + err.message;
+    $('msgErro').classList.add('show');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Processar e enviar pro Meta';
+  }
+}
+
+const STATUS_LABEL = {
+  enviado: '✅ Enviado ao Meta',
+  ja_processado: '➖ Já processado antes',
+  sem_lead: '⚠️ Sem cupom correspondente',
+  dados_invalidos: '⚠️ Dados inválidos',
+  erro_meta: '❌ Erro ao enviar',
+};
+
+function mostrarResultado(resultados){
+  $('cardResultado').style.display = 'block';
+
+  const contagem = {};
+  resultados.forEach(r => { contagem[r.status] = (contagem[r.status] || 0) + 1; });
+  $('resumo').innerHTML = Object.entries(contagem).map(([status, n]) =>
+    `<div class="chip">${STATUS_LABEL[status] || status}: <b>${n}</b></div>`
+  ).join('');
+
+  const cabecalho = '<tr><th>Linha</th><th>Status</th><th>Cupom</th><th>Detalhe</th></tr>';
+  const linhasHtml = resultados.map(r =>
+    `<tr><td>${r.linha}</td><td><span class="status-pill s-${r.status}">${STATUS_LABEL[r.status] || r.status}</span></td><td>${r.codigo_cupom || '—'}</td><td>${escapeHtml(r.detalhe || '')}</td></tr>`
+  ).join('');
+  $('tabelaResultado').innerHTML = cabecalho + linhasHtml;
+
+  $('cardResultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>
