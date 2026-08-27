@@ -311,6 +311,32 @@ const sb = window.supabase && !configPendente()
 const $ = id => document.getElementById(id);
 const form = $('cupomForm');
 
+/* ==================================================================
+   RASTRO DO ANÚNCIO (Meta Ads) — captura fbclid da URL e as
+   cookies _fbp/_fbc que o próprio Pixel já seta no navegador. Isso é
+   salvo junto com o cupom pra, quando a venda fechar no Trinks, a
+   gente conseguir mandar pro Meta de qual clique/anúncio ela veio.
+   Precisa capturar JÁ NO CADASTRO — depois que a pessoa sai da página
+   esse dado não existe em lugar nenhum pra recuperar depois.
+================================================================== */
+function getCookie_(nome){
+  const m = document.cookie.match(new RegExp('(?:^|; )' + nome + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function capturarRastroAnuncio(){
+  const params = new URLSearchParams(location.search);
+  const fbclid = params.get('fbclid');
+  let fbc = getCookie_('_fbc');
+  // se a Pixel ainda não teve tempo de setar o cookie _fbc mas o fbclid
+  // veio na URL, monta o valor manualmente no formato que o Meta espera
+  if (!fbc && fbclid) {
+    fbc = `fb.1.${Date.now()}.${fbclid}`;
+  }
+  const fbp = getCookie_('_fbp');
+  return { fbclid, fbc, fbp };
+}
+
 function mascaraTelefone(el){
   el.addEventListener('input', () => {
     let v = el.value.replace(/\D/g,'').slice(0,11);
@@ -360,8 +386,10 @@ form.addEventListener('submit', async (e) => {
   $('sending').classList.add('show');
 
   try {
+    const rastro = capturarRastroAnuncio();
     const { data, error } = await sb.rpc('resgatar_cupom', {
-      p_nome: nome, p_telefone: telefoneEl.value, p_email: email
+      p_nome: nome, p_telefone: telefoneEl.value, p_email: email,
+      p_fbclid: rastro.fbclid, p_fbc: rastro.fbc, p_fbp: rastro.fbp
     });
     if (error) throw error;
     if (!data.ok) throw new Error(data.erro || 'falha ao resgatar cupom');

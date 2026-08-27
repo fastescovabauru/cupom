@@ -24,7 +24,16 @@ create table if not exists cupons (
   data_validade timestamptz not null,
   compareceu boolean not null default false,
   compareceu_em timestamptz,
-  email_enviado boolean not null default false
+  email_enviado boolean not null default false,
+  -- rastro do clique do anúncio (Meta Ads) no momento do cadastro
+  fbclid text,
+  fbc text,
+  fbp text,
+  -- preenchido depois pelo webhook da Trinks quando a venda fecha na loja
+  venda_id_trinks text unique,
+  venda_valor numeric,
+  venda_data timestamptz,
+  venda_reportada_meta boolean not null default false
 );
 
 create index if not exists cupons_telefone_norm_idx on cupons (telefone_norm);
@@ -62,7 +71,10 @@ $$;
 -- Resgata (ou reconsulta) o cupom de uma pessoa. Chamado direto pelo
 -- index.html com a anon key — por isso todo o cuidado de duplicidade
 -- e cálculo de validade fica aqui dentro, não no front-end.
-create or replace function resgatar_cupom(p_nome text, p_telefone text, p_email text)
+create or replace function resgatar_cupom(
+  p_nome text, p_telefone text, p_email text,
+  p_fbclid text default null, p_fbc text default null, p_fbp text default null
+)
 returns json
 language plpgsql
 security definer
@@ -84,6 +96,13 @@ begin
     limit 1;
 
   if found then
+    if p_fbclid is not null or p_fbc is not null or p_fbp is not null then
+      update cupons set
+        fbclid = coalesce(p_fbclid, fbclid),
+        fbc = coalesce(p_fbc, fbc),
+        fbp = coalesce(p_fbp, fbp)
+      where id = v_existente.id;
+    end if;
     return json_build_object(
       'ok', true, 'existente', true,
       'cupom', json_build_object(
@@ -106,8 +125,8 @@ begin
     v_codigo := 'FASTBAURU' || (1000 + floor(random() * 9000))::int;
   end loop;
 
-  insert into cupons (nome, telefone, telefone_norm, email, email_norm, codigo_cupom, data_validade)
-  values (trim(p_nome), p_telefone, v_telefone_norm, p_email, v_email_norm, v_codigo, now() + interval '4 days')
+  insert into cupons (nome, telefone, telefone_norm, email, email_norm, codigo_cupom, data_validade, fbclid, fbc, fbp)
+  values (trim(p_nome), p_telefone, v_telefone_norm, p_email, v_email_norm, v_codigo, now() + interval '4 days', p_fbclid, p_fbc, p_fbp)
   returning * into v_novo;
 
   return json_build_object(
@@ -182,7 +201,7 @@ $$;
 
 -- libera a execução das funções pra chave anon (a tabela em si continua
 -- travada pelo RLS acima — só dá pra passar pelas funções mesmo).
-grant execute on function resgatar_cupom(text, text, text) to anon;
+grant execute on function resgatar_cupom(text, text, text, text, text, text) to anon;
 grant execute on function marcar_email_enviado(text) to anon;
 grant execute on function listar_admin(text) to anon;
 grant execute on function marcar_compareceu(text, text) to anon;
