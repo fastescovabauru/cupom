@@ -35,6 +35,9 @@
 
   /* ---------- HERO ---------- */
   .hero{padding:18px 0 30px;text-align:center;position:relative}
+  .hero-foto{position:relative;width:100%;aspect-ratio:16/11;border-radius:18px;overflow:hidden;margin-bottom:22px;border:1px solid rgba(212,175,55,0.25)}
+  .hero-foto img{width:100%;height:100%;object-fit:cover;display:block}
+  .hero-foto::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,10,0) 55%,rgba(10,10,10,0.92) 100%)}
   .hero .selo{display:inline-flex;align-items:center;gap:7px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.35);color:var(--dourado-claro);font-size:11.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;border-radius:30px;margin-bottom:20px}
   .hero h1{font-family:var(--serif);font-size:34px;line-height:1.16;font-weight:600;color:var(--branco)}
   .hero h1 em{color:var(--dourado);font-style:italic}
@@ -138,9 +141,10 @@
   </header>
 
   <section class="hero">
-    <span class="selo">🎟️ Só pra quem ainda não veio</span>
-    <h1>Sua <em>primeira vez</em> na Fast Escova Bauru vem com hidratação de presente</h1>
-    <p>Preencha seus dados e seu cupom de <strong>Hidratação grátis</strong> é liberado na hora — igual um bilhete de ouro, direto no seu email.</p>
+    <div class="hero-foto"><img src="hero-hidratacao.jpg" alt="Hidratação capilar na Fast Escova Bauru" loading="eager"></div>
+    <span class="selo">🎟️ Exclusivo para sua primeira vez na Fast</span>
+    <h1>Sua <em>primeira vez</em> na Fast Escova Bauru?<br>Ganhe uma <em>hidratação</em></h1>
+    <p>Preencha seus dados e seu cupom de <strong>Hidratação grátis</strong> é liberado na hora — igual um bilhete de ouro, direto na tela e no seu email.</p>
     <button class="cta-hero" onclick="document.getElementById('form-secao').scrollIntoView({behavior:'smooth',block:'center'})">Resgatar meu cupom agora</button>
     <div class="hero-hint">Leva menos de 1 minuto · sem hora marcada</div>
   </section>
