@@ -99,7 +99,11 @@
 
 <script>
 /* Cole aqui a URL da Edge Function importar-vendas-manual (ver arquivo .ts) */
-const IMPORTAR_VENDAS_URL = "COLE_AQUI_A_URL_DA_EDGE_FUNCTION_importar-vendas-manual";
+const IMPORTAR_VENDAS_URL = "https://bsemnxcfdzdyokxidafu.supabase.co/functions/v1/importar-vendas-manual";
+/* Mesma publishable key usada em index.html/admin.html — o Supabase exige
+   essa chave no cabeçalho pra deixar chamar a Edge Function (não confunde
+   com a senha do painel, que é outra camada, verificada dentro da função). */
+const SUPABASE_ANON_KEY = "sb_publishable_rYrDx9SuurtISjiJqw0ECQ_vTWeKgUg";
 
 const $ = id => document.getElementById(id);
 
@@ -248,7 +252,11 @@ async function processar(){
   try {
     const resp = await fetch(IMPORTAR_VENDAS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      },
       body: JSON.stringify({ senha, vendas })
     });
     const data = await resp.json();
