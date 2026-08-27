@@ -64,9 +64,12 @@ Combinado em 27/08/2026: por 30 dias a Luana sobe manualmente 2x por semana o re
 ### Passo a passo pra ativar
 
 1. **Publicar a Edge Function**: Supabase → **Edge Functions → Deploy a new function** → nome `importar-vendas-manual` → colar `importar-vendas-manual.ts` inteiro → Deploy.
-2. **Gerar o token do Meta com permissão `ads_management`** (mesmo passo da seção de baixo) e colar em Edge Functions → `importar-vendas-manual` → **Secrets**, chave `META_ACCESS_TOKEN`. Sem isso, a ferramenta casa os leads e salva o valor da venda, mas não consegue mandar pro Meta ainda.
-3. Copiar a URL da função e colar em `importar-vendas.html`, na constante `IMPORTAR_VENDAS_URL`.
-4. Publicar (`git add` + commit + push, ou pedir pra mim).
+2. **Desativar a verificação de JWT** (senão a página pública recebe "Failed to fetch" ao chamar a função — o Supabase bloqueia antes de chegar no código): na função → aba **Settings** → **"Verify JWT with legacy secret"** → deixar **desligado** (a própria tela recomenda isso: "Recommended: OFF with JWT and custom auth logic in your function code" — é exatamente nosso caso, a senha é checada dentro do código).
+3. **Gerar o token do Meta com permissão `ads_management`** (mesmo passo da seção de baixo) e colar em Edge Functions → `importar-vendas-manual` → **Secrets**, chave `META_ACCESS_TOKEN`. Sem isso, a ferramenta casa os leads e salva o valor da venda, mas não consegue mandar pro Meta ainda.
+4. Copiar a URL da função e colar em `importar-vendas.html`, na constante `IMPORTAR_VENDAS_URL`.
+5. Publicar (`git add` + commit + push, ou pedir pra mim).
+
+> ⚠️ O mesmo passo 2 (desativar "Verify JWT") também vai ser necessário quando publicarmos o `trinks-webhook.ts` (seção de baixo) — a Trinks/AWS SNS não tem como mandar nosso cabeçalho de autenticação do Supabase.
 
 ### Como usar (2x por semana)
 
