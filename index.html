@@ -319,9 +319,15 @@ const form = $('cupomForm');
    Precisa capturar JÁ NO CADASTRO — depois que a pessoa sai da página
    esse dado não existe em lugar nenhum pra recuperar depois.
 ================================================================== */
+// tolerante a navegador com cookies bloqueados (Safari "Bloquear todos os
+// cookies", modo privado restrito, extensão de privacidade) — sem isso, o
+// simples ato de LER document.cookie lança SecurityError e derruba a
+// inscrição inteira antes mesmo de chegar no Supabase.
 function getCookie_(nome){
-  const m = document.cookie.match(new RegExp('(?:^|; )' + nome + '=([^;]*)'));
-  return m ? decodeURIComponent(m[1]) : null;
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + nome + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (_) { return null; }
 }
 
 function capturarRastroAnuncio(){
@@ -349,6 +355,23 @@ function mascaraTelefone(el){
 mascaraTelefone($('telefone'));
 
 $('btnWhats').href = WHATSAPP_GRUPO_URL;
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+// tenta de novo (com pequena espera) antes de desistir — cobre instabilidade de
+// rede e o 401 intermitente que a própria Supabase já reconheceu publicamente
+// (status.supabase.com, incidente de JWT rejection em curso desde 14/08/2026).
+async function comRetry(fn, tentativas = 3){
+  let ultimoErro;
+  for (let i = 0; i < tentativas; i++){
+    try { return await fn(); }
+    catch (err){
+      ultimoErro = err;
+      if (i < tentativas - 1) await new Promise(r => setTimeout(r, 700 + i*900));
+    }
+  }
+  throw ultimoErro;
+}
 
 function parseDataBr(str){
   const [d,m,a] = String(str).split('/').map(Number);
@@ -387,11 +410,14 @@ form.addEventListener('submit', async (e) => {
 
   try {
     const rastro = capturarRastroAnuncio();
-    const { data, error } = await sb.rpc('resgatar_cupom', {
-      p_nome: nome, p_telefone: telefoneEl.value, p_email: email,
-      p_fbclid: rastro.fbclid, p_fbc: rastro.fbc, p_fbp: rastro.fbp
+    const data = await comRetry(async () => {
+      const r = await sb.rpc('resgatar_cupom', {
+        p_nome: nome, p_telefone: telefoneEl.value, p_email: email,
+        p_fbclid: rastro.fbclid, p_fbc: rastro.fbc, p_fbp: rastro.fbp
+      });
+      if (r.error) throw r.error;
+      return r.data;
     });
-    if (error) throw error;
     if (!data.ok) throw new Error(data.erro || 'falha ao resgatar cupom');
 
     // conversão Meta Ads — só na primeira vez (cupom novo), pra não contar
@@ -413,6 +439,11 @@ form.addEventListener('submit', async (e) => {
     mostrarTicket(data.cupom, data.existente);
   } catch (err) {
     console.error(err);
+    // detalhe técnico temporário — tira depois de identificar a causa raiz real
+    // (ver README-setup.md, seção "Debug ativo — tirar depois").
+    const detalhe = (err && (err.message || err.error_description || err.hint || err.code)) || String(err) || 'sem detalhe';
+    $('formErro').innerHTML = 'Não consegui liberar seu cupom agora. Tenta de novo em instantes, ou chama a gente no WhatsApp: (14) 99145-5532.'
+      + '<br><span style="opacity:.55;font-size:11px">detalhe técnico (tira um print e manda pra Luana): ' + esc(detalhe) + '</span>';
     $('formErro').classList.add('show');
   } finally {
     $('sending').classList.remove('show');
